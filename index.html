@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Magical Christmas Surprise</title>
 
   <!-- MediaPipe -->
@@ -18,6 +18,10 @@
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       user-select: none;
       cursor: crosshair;
+      /* 防止 iOS 橡皮筋滚动 */
+      position: fixed;
+      width: 100%;
+      height: 100%;
     }
 
     #canvas-container {
@@ -1013,27 +1017,39 @@
         updateFireworks(); composer.render();
     }
 
-    // === 📱 适配手机竖屏的缩放逻辑 ===
+    // === 📱 适配手机和iPad竖屏的缩放逻辑 ===
     function onWindowResize() {
         const width = window.innerWidth;
         const height = window.innerHeight;
+        const aspect = width / height;
         
-        camera.aspect = width / height;
+        camera.aspect = aspect;
         camera.updateProjectionMatrix();
         
         renderer.setSize(width, height);
         composer.setSize(width, height);
         bloomPass.setSize(width, height);
 
-        // 如果是竖屏 (aspect < 1)，把摄像机拉远，否则树显示不全
-        if (width < height) {
-            camera.position.z = 160; // 手机竖屏拉远
-            camera.position.y = 20;  // 稍微抬高一点视角
+        // 如果是竖屏 (aspect < 1)
+        if (aspect < 1) {
+            // 平板/iPad 这种比较宽的竖屏 (例如 0.75)
+            if (aspect > 0.6) {
+                camera.position.z = 130; 
+                camera.position.y = 25; 
+                // 关键修正：视线向下一点 (y=15)，让物体在画面中上移
+                camera.lookAt(0, 15, 0); 
+            } else {
+                // 手机这种细长的竖屏
+                camera.position.z = 160; 
+                camera.position.y = 20;  
+                camera.lookAt(0, 20, 0); 
+            }
         } else {
-            camera.position.z = 95;  // 电脑/横屏默认
+            // 横屏 / 电脑
+            camera.position.z = 95;  
             camera.position.y = 18;
+            camera.lookAt(0, 25, 0);
         }
-        camera.lookAt(0, 25, 0); // 始终看向树的中心
     }
 
     window.addEventListener('resize', onWindowResize);
