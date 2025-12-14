@@ -32,7 +32,7 @@
     /* UI 界面 */
     #ui-layer {
       position: absolute;
-      bottom: 20px;
+      bottom: 40px; /* 稍微抬高一点，防止贴底太近 */
       left: 50%;
       transform: translateX(-50%);
       width: 90%;
@@ -181,12 +181,12 @@
     /* 祝福文字 */
     #wish-text {
       position: absolute;
-      top: 70%; 
+      top: 65%; /* 稍微上移，防止被底部遮挡 */
       left: 50%;
       transform: translate(-50%, -50%) scale(0.8);
       font-family: 'Brush Script MT', 'Comic Sans MS', cursive;
       font-weight: 800;
-      font-size: clamp(40px, 7vw, 80px);
+      font-size: clamp(30px, 6vw, 80px); /* 字体自适应 */
       color: #ffde59;
       text-shadow: 0 0 10px #d40024;
       opacity: 0;
@@ -209,6 +209,8 @@
         opacity: 0;
         transition: opacity 1s;
         z-index: 100;
+        width: 100%;
+        text-align: center;
     }
 
     .loader {
@@ -390,7 +392,7 @@
     scene.fog = new THREE.FogExp2(0x02050a, 0.002);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 2000); 
-    camera.position.set(0, 18, 95);
+    // camera position is set in handleResize now
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -1004,13 +1006,31 @@
         updateFireworks(); composer.render();
     }
 
-    window.addEventListener('resize', ()=>{
-      camera.aspect = window.innerWidth/window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      composer.setSize(window.innerWidth, window.innerHeight);
-      bloomPass.setSize(window.innerWidth, window.innerHeight);
-    });
+    // === 📱 适配手机竖屏的缩放逻辑 ===
+    function onWindowResize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        
+        renderer.setSize(width, height);
+        composer.setSize(width, height);
+        bloomPass.setSize(width, height);
+
+        // 如果是竖屏 (aspect < 1)，把摄像机拉远，否则树显示不全
+        if (width < height) {
+            camera.position.z = 160; // 手机竖屏拉远
+            camera.position.y = 20;  // 稍微抬高一点视角
+        } else {
+            camera.position.z = 95;  // 电脑/横屏默认
+            camera.position.y = 18;
+        }
+        camera.lookAt(0, 25, 0); // 始终看向树的中心
+    }
+
+    window.addEventListener('resize', onWindowResize);
+    onWindowResize(); // 初始化执行一次
 
     scene.remove(treeGroup);
     animate();
