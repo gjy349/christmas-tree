@@ -32,7 +32,7 @@
     /* UI 界面 */
     #ui-layer {
       position: absolute;
-      bottom: 40px; /* 稍微抬高一点，防止贴底太近 */
+      bottom: 40px; 
       left: 50%;
       transform: translateX(-50%);
       width: 90%;
@@ -242,8 +242,8 @@
         <span id="status-msg">待機中</span>
       </div>
       <p class="instruction" id="instruction-msg">
-        firework.mp4, christmas_bgm.mp3, letter.jpg<br>
-        を用意してね。下のボタンでスタート
+        手でツリーを操る魔法<br>
+        下のボタンでスタート
       </p>
     </div>
     <button class="magic-btn" id="cam-btn" onclick="toggleCamera()">魔法ビジョンON</button>
@@ -354,9 +354,9 @@
     const STATE = { INIT: 0, COUNTDOWN: 1, TREE_INTERACTIVE: 2, ENVELOPE: 3, LETTER: 4 };
     let appState = STATE.INIT;
 
-    const SOUND_FILE = 'firework.mp4';
-    const LETTER_IMAGE_SRC = 'letter.jpg'; 
+    // 🔥 确保你本地有这个 mp3 文件
     const BGM_FILE = 'christmas_bgm.mp3';
+    const LETTER_IMAGE_SRC = 'letter.jpg'; 
 
     let letterScale = 0.45; 
     let letterTexture = null;
@@ -367,19 +367,18 @@
     let edgeMaterial = null;
     let shootingStar = null;
     
-    // 背景音乐
+    // 背景音乐控制
     let bgmAudio = new Audio(BGM_FILE);
     bgmAudio.loop = true;
     bgmAudio.volume = 0.5;
 
+    // 烟花音效函数清空，不再播放合成声音
     function playFireworkSound() {
-      const audio = new Audio(SOUND_FILE);
-      audio.volume = 0.6; audio.currentTime = 0;
-      audio.play().catch(()=>{});
+      // 🔇 静音
     }
     
     function playBGM() {
-        bgmAudio.play().catch(e => console.log("BGM autoplay blocked or file missing", e));
+        bgmAudio.play().catch(e => console.log("BGM播放失败，请检查文件是否存在", e));
     }
     
     function stopBGM() {
@@ -938,7 +937,7 @@
     function calculateOpenness(l){let t=0;for(let i=0;i<4;i++)t+=Math.hypot(l[8+i*4].x-l[0].x,l[8+i*4].y-l[0].y)/Math.hypot(l[5+i*4].x-l[0].x,l[5+i*4].y-l[0].y);return Math.max(0,Math.min(1,(t/4-1.1)/0.6));}
     function onResults(res){if(!isCameraActive)return;if(res.multiHandLandmarks&&res.multiHandLandmarks.length>0){const l=res.multiHandLandmarks[0],o=calculateOpenness(l);smoothedOpenness+=(o-smoothedOpenness)*0.15;const f=countFingers(l);if(appState===STATE.COUNTDOWN){if(f===countdownValue){if(matchStartTime===0)matchStartTime=Date.now();else{const e=Date.now()-matchStartTime;progressBar.style.width=Math.min(100,(e/MATCH_DURATION)*100)+"%";if(e>MATCH_DURATION){countdownValue--;matchStartTime=0;progressBar.style.width="0%";if(countdownValue>0){createCountdownDisplay(countdownValue);statusMsg.innerText=`OK！指を ${countdownValue} 本出して`;statusMsg.style.color="#FFD700";}else enterTreeState();}}}else{matchStartTime=0;progressBar.style.width="0%";statusMsg.innerText=`${countdownValue}本出して (今${f}本)`;statusMsg.style.color="#fff";}}else if(appState===STATE.TREE_INTERACTIVE){targetScale=0.78+smoothedOpenness*0.9;if(!isHeartMode&&smoothedOpenness>0.9)isHeartMode=true;else if(isHeartMode&&smoothedOpenness<0.6){isHeartMode=false;heartCycleLocked=false;}if(isHeartMode){targetDispersion=Math.min(1,(smoothedOpenness-0.6)*3.5);statusMsg.innerText="❤️ ハートに変身";statusMsg.style.color="#ff4444";if(!heartCycleLocked&&targetDispersion>0.9){heartCycleCount++;heartCycleLocked=true;instructionMsg.innerText=`ハート変身 ${heartCycleCount}/3`;if(heartCycleCount>=3)setTimeout(enterEnvelopeState,2000);}}else{targetDispersion=0;statusMsg.innerText="✋ サイズ操作中";statusMsg.style.color="#4eff69";instructionMsg.innerText=`手でツリーの大きさを変えてみて`;}}}else{statusMsg.innerText="手を探索中...";statusMsg.style.color="#aaa";matchStartTime=0;progressBar.style.width="0%";}}
     function enterTreeState(){appState=STATE.TREE_INTERACTIVE;while(countdownGroup.children.length>0)countdownGroup.remove(countdownGroup.children[0]);scene.add(treeGroup);createFirework(new THREE.Vector3(0,0,0));statusMsg.innerText="🎄 ツリー登場！";instructionMsg.innerText="手でツリーの大きさを変えてみて";heartCycleCount=0;
-    // START BGM
+    // 🔥 播放音乐 (倒计时结束时)
     playBGM();}
     function enterEnvelopeState(){appState=STATE.ENVELOPE;statusMsg.innerText="";instructionMsg.innerText="";uiLayer.classList.add('hidden');scene.remove(treeGroup);envelopeGroup.children[0].visible=true;createFirework(new THREE.Vector3(0,20,0));groundGroup.visible=false;wishText.style.opacity=0;keyHint.style.opacity=1;
     document.getElementById('close-layer').classList.add('hidden');}
@@ -946,7 +945,15 @@
     document.getElementById('close-layer').classList.remove('hidden');}
     async function toggleCamera(){if(isCameraActive){isCameraActive=false;if(cameraUtils)await cameraUtils.stop();preview.classList.remove('active');appState=STATE.INIT;countdownValue=5;matchStartTime=0;progressBar.style.width="0%";while(countdownGroup.children.length>0)countdownGroup.remove(countdownGroup.children[0]);scene.remove(treeGroup);scene.remove(letterGroup);envelopeGroup.children[0].visible=false;groundGroup.visible=true;camBtn.innerText="魔法ビジョンON";statusMsg.innerText="待機中";instructionMsg.innerHTML="firework.mp4, letter.jpg, christmas_bgm.mp3<br>を用意してね。下のボタンでスタート";uiLayer.classList.remove('hidden');uiLayer.style.pointerEvents='auto';camBtn.disabled=false;targetScale=0.65;currentScale=0.65;dispersionLevel=0;targetDispersion=0;wishText.style.opacity=0;wishText.style.transform="translate(-50%,-50%) scale(0.85)";keyHint.style.opacity=0;document.getElementById('close-layer').classList.add('hidden');
     stopBGM(); // STOP BGM
-    return;}camBtn.disabled=true;statusMsg.innerText="準備中...";appState=STATE.COUNTDOWN;countdownValue=5;createCountdownDisplay(countdownValue);statusMsg.innerText=`指を ${countdownValue} 本出して`;instructionMsg.innerText="数字が変わるまでキープ";try{const hands=new Hands({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.8,minTrackingConfidence:0.8});hands.onResults(onResults);cameraUtils=new Camera(videoElement,{onFrame:async()=>{await hands.send({image:videoElement});},width:640,height:480});await cameraUtils.start();isCameraActive=true;camBtn.disabled=false;camBtn.innerText="カメラOFF";preview.classList.add('active');}catch(e){console.error(e);statusMsg.innerText="エラー発生";camBtn.disabled=false;}}
+    return;}camBtn.disabled=true;statusMsg.innerText="準備中...";appState=STATE.COUNTDOWN;countdownValue=5;createCountdownDisplay(countdownValue);statusMsg.innerText=`指を ${countdownValue} 本出して`;instructionMsg.innerText="数字が変わるまでキープ";
+    
+    // 🔥 在用户点击时“预热”音频，防止手机浏览器拦截自动播放
+    bgmAudio.play().then(() => {
+        bgmAudio.pause();
+        bgmAudio.currentTime = 0;
+    }).catch(()=>{});
+
+    try{const hands=new Hands({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.8,minTrackingConfidence:0.8});hands.onResults(onResults);cameraUtils=new Camera(videoElement,{onFrame:async()=>{await hands.send({image:videoElement});},width:640,height:480});await cameraUtils.start();isCameraActive=true;camBtn.disabled=false;camBtn.innerText="カメラOFF";preview.classList.add('active');}catch(e){console.error(e);statusMsg.innerText="エラー発生";camBtn.disabled=false;}}
     
     // UI Key Hint
     const keyHint = document.getElementById('key-hint');
