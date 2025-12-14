@@ -912,7 +912,23 @@
     // 🔥 修复：烟花拖尾变粗 (14.0)
     function updateFireworks(){for(let i=activeSparks.length-1;i>=0;i--){const s=activeSparks[i];let c=s.color;if(s.strobe&&Math.random()>0.5)c=new THREE.Color(0,0,0);
     emitTrail(s.pos,c,s.life*s.sizeMult*14.0);
-    s.pos.add(s.vel);s.vel.y-=s.gravity;s.vel.multiplyScalar(0.98);s.life-=s.decay;if(s.life<=0)activeSparks.splice(i,1);}const sa=trailsGeometry.attributes.size.array;for(let i=0;i<MAX_TRAIL_PARTICLES;i++)if(sa[i]>0){sa[i]*=0.92;if(sa[i]<0.1)sa[i]=0;}trailsGeometry.attributes.size.needsUpdate=true;} function emitTrail(p,c,s){const i=trailParticleIndex,pa=trailsGeometry.attributes.position.array,ca=trailsGeometry.attributes.color.array,sa=trailsGeometry.attributes.size.array;pa[i*3]=p.x;pa[i*3+1]=p.y;pa[i*3+2]=p.z;ca[i*3]=c.r;ca[i*3+1]=c.g;ca[i*3+2]=c.b;sa[i]=s;trailParticleIndex=(trailParticleIndex+1)%MAX_TRAIL_PARTICLES;trailsGeometry.attributes.position.needsUpdate=true;trailsGeometry.attributes.color.needsUpdate=true;} function onPointerDown(e){if(appState===STATE.LETTER)return;e.preventDefault();let cx,cy;if(e.touches){cx=e.touches[0].clientX;cy=e.touches[0].clientY;}else{cx=e.clientX;cy=e.clientY;}mouse.x=(cx/window.innerWidth)*2-1;mouse.y=-(cy/window.innerHeight)*2+1;raycaster.setFromCamera(mouse,camera);if(appState===STATE.ENVELOPE){const is=raycaster.intersectObjects(envelopeGroup.children,true);for(let i=0;i<is.length;i++)if(is[i].object.name==='waxSeal'){openEnvelope();return;}}const i=new THREE.Vector3();raycaster.ray.intersectPlane(plane,i);createFirework(i);}document.addEventListener('mousedown',onPointerDown);document.addEventListener('touchstart',onPointerDown,{passive:false});
+    s.pos.add(s.vel);s.vel.y-=s.gravity;s.vel.multiplyScalar(0.98);s.life-=s.decay;if(s.life<=0)activeSparks.splice(i,1);}const sa=trailsGeometry.attributes.size.array;for(let i=0;i<MAX_TRAIL_PARTICLES;i++)if(sa[i]>0){sa[i]*=0.92;if(sa[i]<0.1)sa[i]=0;}trailsGeometry.attributes.size.needsUpdate=true;} function emitTrail(p,c,s){const i=trailParticleIndex,pa=trailsGeometry.attributes.position.array,ca=trailsGeometry.attributes.color.array,sa=trailsGeometry.attributes.size.array;pa[i*3]=p.x;pa[i*3+1]=p.y;pa[i*3+2]=p.z;ca[i*3]=c.r;ca[i*3+1]=c.g;ca[i*3+2]=c.b;sa[i]=s;trailParticleIndex=(trailParticleIndex+1)%MAX_TRAIL_PARTICLES;trailsGeometry.attributes.position.needsUpdate=true;trailsGeometry.attributes.color.needsUpdate=true;} 
+    
+    // === 🔥 核心修复代码：支持手机点击按钮 🔥 ===
+    function onPointerDown(e){
+        // 关键判断：如果点的是 UI 面板、按钮或者关闭层，直接返回，不要拦截！
+        if (e.target.closest('button') || e.target.closest('.glass-panel') || e.target.closest('#close-layer')) {
+            return; 
+        }
+
+        if(appState===STATE.LETTER)return;
+        
+        // 只有在点击背景时，才阻止默认行为（防止拖动）
+        if(e.cancelable) e.preventDefault();
+        
+        let cx,cy;if(e.touches){cx=e.touches[0].clientX;cy=e.touches[0].clientY;}else{cx=e.clientX;cy=e.clientY;}mouse.x=(cx/window.innerWidth)*2-1;mouse.y=-(cy/window.innerHeight)*2+1;raycaster.setFromCamera(mouse,camera);if(appState===STATE.ENVELOPE){const is=raycaster.intersectObjects(envelopeGroup.children,true);for(let i=0;i<is.length;i++)if(is[i].object.name==='waxSeal'){openEnvelope();return;}}const i=new THREE.Vector3();raycaster.ray.intersectPlane(plane,i);createFirework(i);}
+    
+    document.addEventListener('mousedown',onPointerDown);document.addEventListener('touchstart',onPointerDown,{passive:false});
 
     let targetScale=0.65, currentScale=0.65, dispersionLevel=0, targetDispersion=0, isCameraActive=false, cameraUtils, stableFrameCount=0, smoothedOpenness=0, isHeartMode=false, heartCycleCount=0, heartCycleLocked=false;
     const videoElement=document.getElementById('input_video'), camBtn=document.getElementById('cam-btn'), statusMsg=document.getElementById('status-msg'), instructionMsg=document.getElementById('instruction-msg'), preview=document.getElementById('camera-preview'), uiLayer=document.getElementById('ui-layer'), progressBar=document.getElementById('gesture-progress'), wishText=document.getElementById('wish-text');
