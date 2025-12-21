@@ -789,7 +789,11 @@
             map: letterTexture || null, // 没加载到就显示白板
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0
+            opacity: 0,
+            // 🔥 关键修复：降低材质的基础亮度
+            // 原理：因为场景有很强的辉光(Bloom)，纯白(0xffffff)会让照片发光过曝。
+            // 使用灰色(0x999999)压暗一点，加上辉光后刚好显示正常的亮度。
+            color: 0x999999 
         });
 
         // 没加载到图片时给个颜色
