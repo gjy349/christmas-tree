@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Magical Christmas Surprise</title>
 
   <!-- MediaPipe -->
@@ -18,6 +18,9 @@
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       user-select: none;
       cursor: crosshair;
+      position: fixed;
+      width: 100%;
+      height: 100%;
     }
 
     #canvas-container {
@@ -181,12 +184,12 @@
     /* 祝福文字 */
     #wish-text {
       position: absolute;
-      top: 65%; /* 稍微上移，防止被底部遮挡 */
+      top: 60%;
       left: 50%;
       transform: translate(-50%, -50%) scale(0.8);
       font-family: 'Brush Script MT', 'Comic Sans MS', cursive;
       font-weight: 800;
-      font-size: clamp(30px, 6vw, 80px); /* 字体自适应 */
+      font-size: clamp(30px, 6vw, 80px);
       color: #ffde59;
       text-shadow: 0 0 10px #d40024;
       opacity: 0;
@@ -354,9 +357,8 @@
     const STATE = { INIT: 0, COUNTDOWN: 1, TREE_INTERACTIVE: 2, ENVELOPE: 3, LETTER: 4 };
     let appState = STATE.INIT;
 
-    // 🔥 确保你本地有这个 mp3 文件
-    const BGM_FILE = './bgm.mp3';
-const LETTER_IMAGE_SRC = './picture.jpg';
+    const BGM_FILE = 'christmas_bgm.mp3';
+    const LETTER_IMAGE_SRC = 'letter.jpg'; 
 
     let letterScale = 0.45; 
     let letterTexture = null;
@@ -372,10 +374,7 @@ const LETTER_IMAGE_SRC = './picture.jpg';
     bgmAudio.loop = true;
     bgmAudio.volume = 0.5;
 
-    // 烟花音效函数清空，不再播放合成声音
-    function playFireworkSound() {
-      // 🔇 静音
-    }
+    function playFireworkSound() {} // 静音
     
     function playBGM() {
         bgmAudio.play().catch(e => console.log("BGM播放失败，请检查文件是否存在", e));
@@ -391,7 +390,6 @@ const LETTER_IMAGE_SRC = './picture.jpg';
     scene.fog = new THREE.FogExp2(0x02050a, 0.002);
 
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 2000); 
-    // camera position is set in handleResize now
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -470,32 +468,24 @@ const LETTER_IMAGE_SRC = './picture.jpg';
     // ================== 键盘控制信件大小 ==================
     window.addEventListener('keydown', (e) => {
         if (appState !== STATE.LETTER) return;
-        
         const step = 0.05;
+        // 修改为缩放 Group 整体，因为现在是 Mesh
+        const letterMesh = letterGroup.children[0];
+        if (!letterMesh) return;
+
         if (e.key === 'ArrowUp') {
             letterScale += step;
         } else if (e.key === 'ArrowDown') {
             letterScale = Math.max(0.1, letterScale - step);
         } else if (e.key.toLowerCase() === 'r') {
-            letterScale = 0.45; // 重置
+            letterScale = 0.45; 
         }
-
-        if (letterGroup.children.length > 0) {
-            updateLetterDestinations(letterGroup.children[0]);
-        }
+        
+        // 应用缩放
+        letterMesh.scale.set(letterScale, letterScale, 1.0);
     });
 
-    function updateLetterDestinations(letterMesh) {
-        const geo = letterMesh.geometry;
-        const original = geo.userData.original; 
-        if (!original) return;
-        const dest = geo.userData.dest;
-        for(let i=0; i<original.length; i+=3) {
-            dest[i] = original[i] * letterScale;
-            dest[i+1] = original[i+1] * letterScale + 20; 
-            dest[i+2] = original[i+2] * letterScale;
-        }
-    }
+    // 不需要 updateLetterDestinations 了，因为现在是普通 Mesh
 
     // ================== 环境元素 ==================
     function createStars() {
@@ -565,7 +555,6 @@ const LETTER_IMAGE_SRC = './picture.jpg';
         geo.setAttribute("size", new THREE.Float32BufferAttribute(size, 1));
         geo.setAttribute("phase", new THREE.Float32BufferAttribute(phase, 1));
         
-        // 赋值给全局变量
         groundMaterial = new THREE.ShaderMaterial({
             uniforms: { pointTexture: { value: particleTexture }, time: { value: 0.0 } },
             vertexShader: document.getElementById('groundVertexShader').textContent,
@@ -627,7 +616,6 @@ const LETTER_IMAGE_SRC = './picture.jpg';
       ctx.fillText(text, size/2, size/2);
       const data = ctx.getImageData(0,0,size,size).data;
       const particles = [];
-      // 增加密度: step = 1 (scan every pixel)
       for(let y=0; y<size; y+=1) {
         for(let x=0; x<size; x+=1) {
           if(data[(y*size+x)*4+3]>128) particles.push({x:(x-size/2)*1.5, y:(size/2-y)*1.5, z:0});
@@ -659,7 +647,8 @@ const LETTER_IMAGE_SRC = './picture.jpg';
       const points = new THREE.Points(geo, mat);
       points.scale.set(0.8, 0.8, 0.8);
       countdownGroup.add(points);
-      countdownGroup.position.set(0, 25, 0);
+      // 🔥🔥 修正：将数字高度设为 40
+      countdownGroup.position.set(0, 40, 0);
     }
 
     // ================== 信封逻辑 (修正) ==================
@@ -712,7 +701,7 @@ const LETTER_IMAGE_SRC = './picture.jpg';
         addLine(-W/2, H/2, d, 0, -10, d+1); 
         addLine(W/2, H/2, d, 0, -10, d+1);
 
-        // 3. 💗 爱心火漆印章 - 修正对齐
+        // 3. 💗 爱心火漆印章
         const sealScale = 0.45; 
         for(let i=0; i<1000; i++) {
             const t = Math.random() * Math.PI * 2;
@@ -763,7 +752,6 @@ const LETTER_IMAGE_SRC = './picture.jpg';
         });
         group.add(new THREE.Points(geoEdge, edgeMaterial));
 
-
         const hitGeo = new THREE.CircleGeometry(20, 16);
         const hitMat = new THREE.MeshBasicMaterial({ visible: false });
         const hitMesh = new THREE.Mesh(hitGeo, hitMat);
@@ -771,82 +759,59 @@ const LETTER_IMAGE_SRC = './picture.jpg';
         hitMesh.position.set(0, -10, 3); 
         group.add(hitMesh);
         
-        group.position.set(0, 10, 0); 
+        // 🔥🔥 修正：信封位置设为 20
+        group.position.set(0, 20, 0); 
         group.visible = false;
         envelopeGroup.add(group);
     }
     createParticleEnvelope();
 
+    // 🔥🔥🔥 核心修改：创建普通的 Mesh 照片，而不是粒子 🔥🔥🔥
     function createLetterParticles() {
-        const geo = new THREE.BufferGeometry();
-        const pos = [], col = [], sizes = [], dest = [], original = [];
+        // 清空旧的信件
+        while(letterGroup.children.length > 0) letterGroup.remove(letterGroup.children[0]);
 
-        let imgData = null;
+        // 默认宽 80
+        const width = 80;
+        let height = 60; // 默认
+
+        // 如果纹理已加载，根据图片比例计算高度
         if (letterTexture && letterTexture.image) {
-            const c = document.createElement('canvas');
             const ratio = letterTexture.image.height / letterTexture.image.width;
-            const w = 80; const h = Math.floor(80 * ratio);
-            c.width = w; c.height = h;
-            const ctx = c.getContext('2d');
-            ctx.drawImage(letterTexture.image, 0, 0, w, h);
-            imgData = ctx.getImageData(0, 0, w, h).data;
-            
-            for(let y=0; y<h; y++) {
-                for(let x=0; x<w; x++) {
-                    const i = (y*w + x)*4;
-                    if(imgData[i+3] > 20) {
-                        pos.push((Math.random()-0.5)*5, 10+(Math.random()-0.5)*5, (Math.random()-0.5)*5);
-                        
-                        const ox = (x - w/2);
-                        const oy = (h/2 - y);
-                        const oz = 0;
-                        
-                        dest.push(ox * letterScale, oy * letterScale + 20, oz); 
-                        original.push(ox, oy, oz); 
-
-                        col.push(imgData[i]/255, imgData[i+1]/255, imgData[i+2]/255);
-                        sizes.push(1.0);
-                    }
-                }
-            }
-        } else {
-            // Default particles
-            for(let i=0; i<3000; i++) {
-                 pos.push((Math.random()-0.5)*5, 10+(Math.random()-0.5)*5, (Math.random()-0.5)*5);
-                 const ox = (Math.random()-0.5)*40;
-                 const oy = (Math.random()-0.5)*50;
-                 const oz = 0;
-
-                 dest.push(ox + 0, oy + 20, oz);
-                 original.push(ox, oy, oz);
-
-                 const c = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
-                 col.push(c.r, c.g, c.b);
-                 sizes.push(1.5);
-            }
+            height = width * ratio;
         }
 
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-        geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-        geo.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
-        geo.userData = { dest: dest, original: original };
-
-        const mat = new THREE.ShaderMaterial({
-            uniforms: { pointTexture: { value: particleTexture } },
-            vertexShader: document.getElementById('vertexshader').textContent,
-            fragmentShader: document.getElementById('fragmentshader').textContent,
-            blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, vertexColors: true
+        // 创建平面几何体
+        const geometry = new THREE.PlaneGeometry(width, height);
+        
+        // 创建基础材质，贴上照片
+        const material = new THREE.MeshBasicMaterial({ 
+            map: letterTexture || null, // 没加载到就显示白板
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0
         });
 
-        const letter = new THREE.Points(geo, mat);
-        letterGroup.add(letter);
+        // 没加载到图片时给个颜色
+        if (!letterTexture) {
+            material.color = new THREE.Color(0xffffff);
+        }
+
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        // 初始位置设在信封处 (y=20)
+        mesh.position.set(0, 20, 0);
+        // 初始缩放
+        mesh.scale.set(letterScale, letterScale, 1.0);
+
+        letterGroup.add(mesh);
         scene.add(letterGroup);
-        return letter; 
+        
+        return mesh; 
     }
 
-    // ================== 关闭信件逻辑 ==================
     function closeLetter() {
-        toggleCamera(); // 复用 toggleCamera 的“关闭”逻辑，实现完全重置
+        toggleCamera(); 
     }
 
     // ================== 经典浪漫树 ==================
@@ -856,7 +821,7 @@ const LETTER_IMAGE_SRC = './picture.jpg';
     let BODY_COUNT = LEAVES_COUNT + TRUNK_COUNT; 
     const originalPositions=[], heartPositions=[], originalColors=[];
     const heartColor = new THREE.Color(0xD40024); 
-
+    
     function generateHeartPositions(n) {
       heartPositions.length = 0;
       for(let i=0; i<n; i++) {
@@ -865,12 +830,13 @@ const LETTER_IMAGE_SRC = './picture.jpg';
         const xBase = 16 * Math.pow(Math.sin(t),3);
         const yBase = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
         const scale = 1.5 * rScale; 
-        // 关键：恢复大爱心位置 (y+5)
         heartPositions.push({x:xBase*scale, y:yBase*scale+5, z:0}); 
       }
     }
+
     function createTreeLikeReference() {
       while (treeGroup.children.length) treeGroup.remove(treeGroup.children[0]);
+      
       const cGreen=new THREE.Color(0x00d060), cGreenDeep=new THREE.Color(0x003311), cRed=new THREE.Color(0xff0022), cGold=new THREE.Color(0xffcc00), cWhite=new THREE.Color(0xffffee), cTrunk=new THREE.Color(0x654321); 
       const geo=new THREE.BufferGeometry(), pos=new Float32Array(BODY_COUNT*3), col=new Float32Array(BODY_COUNT*3), size=new Float32Array(BODY_COUNT);
       for (let i=0; i<LEAVES_COUNT; i++) {
@@ -894,13 +860,16 @@ const LETTER_IMAGE_SRC = './picture.jpg';
       originalPositions.length=0; originalColors.length=0;
       for (let i=0;i<BODY_COUNT;i++) {originalPositions.push({x:pos[i*3],y:pos[i*3+1],z:pos[i*3+2]});originalColors.push(new THREE.Color(col[i*3],col[i*3+1],col[i*3+2]));}
       generateHeartPositions(BODY_COUNT);
+      
       function makeSpiralPoints(color,phase=0,turns=3.2){const pts=[],count=1800,g=new THREE.BufferGeometry(),pArr=new Float32Array(count*3),cArr=new Float32Array(count*3),sArr=new Float32Array(count),col=new THREE.Color(color);for(let i=0;i<count;i++){const tt=i/count,y=(-TREE_HEIGHT/2)+tt*TREE_HEIGHT,rBase=(1-tt)*TREE_RADIUS*1.45,r=rBase*(0.9+0.25*Math.sin(tt*Math.PI*6)),a=tt*Math.PI*2*turns+phase,offset=(Math.random()-0.5)*5.0,x=Math.cos(a)*(r+offset),z=Math.sin(a)*(r+offset),yy=y+(Math.random()-0.5)*2.5;pArr[i*3]=x;pArr[i*3+1]=yy;pArr[i*3+2]=z;cArr[i*3]=col.r;cArr[i*3+1]=col.g;cArr[i*3+2]=col.b;sArr[i]=1.5+Math.random();}g.setAttribute('position',new THREE.BufferAttribute(pArr,3));g.setAttribute('color',new THREE.BufferAttribute(cArr,3));g.setAttribute('size',new THREE.BufferAttribute(sArr,1));return new THREE.Points(g,mat);}
       const ribbonGroup=new THREE.Group(); ribbonGroup.name="ribbonGroup";
       ribbonGroup.add(makeSpiralPoints(0xFFD700,0.0,3.0)); ribbonGroup.add(makeSpiralPoints(0xFFD700,Math.PI,3.0)); treeGroup.add(ribbonGroup);
       const starShape=new THREE.Shape(),ptsN=5,outerR=3.8,innerR=1.6;for(let i=0;i<ptsN*2;i++){const r=(i%2===0)?outerR:innerR,ang=(i/(ptsN*2))*Math.PI*2-Math.PI/2;if(i===0)starShape.moveTo(Math.cos(ang)*r,Math.sin(ang)*r);else starShape.lineTo(Math.cos(ang)*r,Math.sin(ang)*r);}starShape.closePath();
       const starGeo=new THREE.ShapeGeometry(starShape),starMat=new THREE.MeshBasicMaterial({color:0xffd700,side:THREE.DoubleSide}),star=new THREE.Mesh(starGeo,starMat);star.position.y=TREE_HEIGHT/2+4;star.name="star";treeGroup.add(star);
       const starLight=new THREE.PointLight(0xffd700,2.0,150);starLight.position.set(0,TREE_HEIGHT/2+6,0);starLight.name="starLight";treeGroup.add(starLight);
-      treeGroup.position.y=25;
+
+      // 🔥🔥 修正：树的位置设为 30
+      treeGroup.position.y = 30;
     }
     createTreeLikeReference();
 
@@ -910,23 +879,14 @@ const LETTER_IMAGE_SRC = './picture.jpg';
     const trailsMaterial=new THREE.ShaderMaterial({uniforms:{pointTexture:{value:particleTexture}},vertexShader:document.getElementById('vertexshader').textContent,fragmentShader:document.getElementById('fragmentshader').textContent,blending:THREE.AdditiveBlending,depthTest:false,transparent:true,vertexColors:true});
     const trailsSystem=new THREE.Points(trailsGeometry,trailsMaterial); scene.add(trailsSystem); let activeSparks=[];
     function getRandomColor(){const c=new THREE.Color();c.setHSL(Math.random(),1.0,0.6);return c;} function randomSphereVel(s){const t=Math.random()*Math.PI*2,p=Math.acos(2*Math.random()-1);return new THREE.Vector3(s*Math.sin(p)*Math.cos(t),s*Math.sin(p)*Math.sin(t),s*Math.cos(p));} function addSpark(p,v,c,d,g,sm=1.0,st=false){activeSparks.push({pos:p.clone(),vel:v,color:c,life:1.0,decay:d,gravity:g,sizeMult:sm,strobe:st});} function createFirework(p){playFireworkSound();const s=Math.floor(Math.random()*9),bc=getRandomColor();let c=120;switch(s){case 0:c=150;for(let i=0;i<c;i++)addSpark(p,randomSphereVel(2.5),getRandomColor(),0.02,0.04);break;default:c=120;for(let i=0;i<c;i++)addSpark(p,randomSphereVel(2.2),bc,0.02,0.04);break;}} 
-    // 🔥 修复：烟花拖尾变粗 (14.0)
     function updateFireworks(){for(let i=activeSparks.length-1;i>=0;i--){const s=activeSparks[i];let c=s.color;if(s.strobe&&Math.random()>0.5)c=new THREE.Color(0,0,0);
     emitTrail(s.pos,c,s.life*s.sizeMult*14.0);
     s.pos.add(s.vel);s.vel.y-=s.gravity;s.vel.multiplyScalar(0.98);s.life-=s.decay;if(s.life<=0)activeSparks.splice(i,1);}const sa=trailsGeometry.attributes.size.array;for(let i=0;i<MAX_TRAIL_PARTICLES;i++)if(sa[i]>0){sa[i]*=0.92;if(sa[i]<0.1)sa[i]=0;}trailsGeometry.attributes.size.needsUpdate=true;} function emitTrail(p,c,s){const i=trailParticleIndex,pa=trailsGeometry.attributes.position.array,ca=trailsGeometry.attributes.color.array,sa=trailsGeometry.attributes.size.array;pa[i*3]=p.x;pa[i*3+1]=p.y;pa[i*3+2]=p.z;ca[i*3]=c.r;ca[i*3+1]=c.g;ca[i*3+2]=c.b;sa[i]=s;trailParticleIndex=(trailParticleIndex+1)%MAX_TRAIL_PARTICLES;trailsGeometry.attributes.position.needsUpdate=true;trailsGeometry.attributes.color.needsUpdate=true;} 
     
-    // === 🔥 核心修复代码：支持手机点击按钮 🔥 ===
     function onPointerDown(e){
-        // 关键判断：如果点的是 UI 面板、按钮或者关闭层，直接返回，不要拦截！
-        if (e.target.closest('button') || e.target.closest('.glass-panel') || e.target.closest('#close-layer')) {
-            return; 
-        }
-
+        if (e.target.closest('button') || e.target.closest('.glass-panel') || e.target.closest('#close-layer')) return; 
         if(appState===STATE.LETTER)return;
-        
-        // 只有在点击背景时，才阻止默认行为（防止拖动）
         if(e.cancelable) e.preventDefault();
-        
         let cx,cy;if(e.touches){cx=e.touches[0].clientX;cy=e.touches[0].clientY;}else{cx=e.clientX;cy=e.clientY;}mouse.x=(cx/window.innerWidth)*2-1;mouse.y=-(cy/window.innerHeight)*2+1;raycaster.setFromCamera(mouse,camera);if(appState===STATE.ENVELOPE){const is=raycaster.intersectObjects(envelopeGroup.children,true);for(let i=0;i<is.length;i++)if(is[i].object.name==='waxSeal'){openEnvelope();return;}}const i=new THREE.Vector3();raycaster.ray.intersectPlane(plane,i);createFirework(i);}
     
     document.addEventListener('mousedown',onPointerDown);document.addEventListener('touchstart',onPointerDown,{passive:false});
@@ -937,17 +897,20 @@ const LETTER_IMAGE_SRC = './picture.jpg';
     function calculateOpenness(l){let t=0;for(let i=0;i<4;i++)t+=Math.hypot(l[8+i*4].x-l[0].x,l[8+i*4].y-l[0].y)/Math.hypot(l[5+i*4].x-l[0].x,l[5+i*4].y-l[0].y);return Math.max(0,Math.min(1,(t/4-1.1)/0.6));}
     function onResults(res){if(!isCameraActive)return;if(res.multiHandLandmarks&&res.multiHandLandmarks.length>0){const l=res.multiHandLandmarks[0],o=calculateOpenness(l);smoothedOpenness+=(o-smoothedOpenness)*0.15;const f=countFingers(l);if(appState===STATE.COUNTDOWN){if(f===countdownValue){if(matchStartTime===0)matchStartTime=Date.now();else{const e=Date.now()-matchStartTime;progressBar.style.width=Math.min(100,(e/MATCH_DURATION)*100)+"%";if(e>MATCH_DURATION){countdownValue--;matchStartTime=0;progressBar.style.width="0%";if(countdownValue>0){createCountdownDisplay(countdownValue);statusMsg.innerText=`OK！指を ${countdownValue} 本出して`;statusMsg.style.color="#FFD700";}else enterTreeState();}}}else{matchStartTime=0;progressBar.style.width="0%";statusMsg.innerText=`${countdownValue}本出して (今${f}本)`;statusMsg.style.color="#fff";}}else if(appState===STATE.TREE_INTERACTIVE){targetScale=0.78+smoothedOpenness*0.9;if(!isHeartMode&&smoothedOpenness>0.9)isHeartMode=true;else if(isHeartMode&&smoothedOpenness<0.6){isHeartMode=false;heartCycleLocked=false;}if(isHeartMode){targetDispersion=Math.min(1,(smoothedOpenness-0.6)*3.5);statusMsg.innerText="❤️ ハートに変身";statusMsg.style.color="#ff4444";if(!heartCycleLocked&&targetDispersion>0.9){heartCycleCount++;heartCycleLocked=true;instructionMsg.innerText=`ハート変身 ${heartCycleCount}/3`;if(heartCycleCount>=3)setTimeout(enterEnvelopeState,2000);}}else{targetDispersion=0;statusMsg.innerText="✋ サイズ操作中";statusMsg.style.color="#4eff69";instructionMsg.innerText=`手でツリーの大きさを変えてみて`;}}}else{statusMsg.innerText="手を探索中...";statusMsg.style.color="#aaa";matchStartTime=0;progressBar.style.width="0%";}}
     function enterTreeState(){appState=STATE.TREE_INTERACTIVE;while(countdownGroup.children.length>0)countdownGroup.remove(countdownGroup.children[0]);scene.add(treeGroup);createFirework(new THREE.Vector3(0,0,0));statusMsg.innerText="🎄 ツリー登場！";instructionMsg.innerText="手でツリーの大きさを変えてみて";heartCycleCount=0;
-    // 🔥 播放音乐 (倒计时结束时)
     playBGM();}
     function enterEnvelopeState(){appState=STATE.ENVELOPE;statusMsg.innerText="";instructionMsg.innerText="";uiLayer.classList.add('hidden');scene.remove(treeGroup);envelopeGroup.children[0].visible=true;createFirework(new THREE.Vector3(0,20,0));groundGroup.visible=false;wishText.style.opacity=0;keyHint.style.opacity=1;
     document.getElementById('close-layer').classList.add('hidden');}
-    function openEnvelope(){appState=STATE.LETTER;envelopeGroup.children[0].visible=false;createFirework(new THREE.Vector3(0,10,0));const lp=createLetterParticles();lp.userData.animationTime=0;
+    function openEnvelope(){appState=STATE.LETTER;envelopeGroup.children[0].visible=false;createFirework(new THREE.Vector3(0,10,0));
+    // 🔥 修正：createLetterParticles现在返回 Mesh 
+    const mesh = createLetterParticles();
+    // 增加一个淡入动画变量
+    mesh.userData.animationTime = 0;
+    
     document.getElementById('close-layer').classList.remove('hidden');}
     async function toggleCamera(){if(isCameraActive){isCameraActive=false;if(cameraUtils)await cameraUtils.stop();preview.classList.remove('active');appState=STATE.INIT;countdownValue=5;matchStartTime=0;progressBar.style.width="0%";while(countdownGroup.children.length>0)countdownGroup.remove(countdownGroup.children[0]);scene.remove(treeGroup);scene.remove(letterGroup);envelopeGroup.children[0].visible=false;groundGroup.visible=true;camBtn.innerText="魔法ビジョンON";statusMsg.innerText="待機中";instructionMsg.innerHTML="firework.mp4, letter.jpg, christmas_bgm.mp3<br>を用意してね。下のボタンでスタート";uiLayer.classList.remove('hidden');uiLayer.style.pointerEvents='auto';camBtn.disabled=false;targetScale=0.65;currentScale=0.65;dispersionLevel=0;targetDispersion=0;wishText.style.opacity=0;wishText.style.transform="translate(-50%,-50%) scale(0.85)";keyHint.style.opacity=0;document.getElementById('close-layer').classList.add('hidden');
-    stopBGM(); // STOP BGM
+    stopBGM(); 
     return;}camBtn.disabled=true;statusMsg.innerText="準備中...";appState=STATE.COUNTDOWN;countdownValue=5;createCountdownDisplay(countdownValue);statusMsg.innerText=`指を ${countdownValue} 本出して`;instructionMsg.innerText="数字が変わるまでキープ";
     
-    // 🔥 在用户点击时“预热”音频，防止手机浏览器拦截自动播放
     bgmAudio.play().then(() => {
         bgmAudio.pause();
         bgmAudio.currentTime = 0;
@@ -955,9 +918,7 @@ const LETTER_IMAGE_SRC = './picture.jpg';
 
     try{const hands=new Hands({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});hands.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.8,minTrackingConfidence:0.8});hands.onResults(onResults);cameraUtils=new Camera(videoElement,{onFrame:async()=>{await hands.send({image:videoElement});},width:640,height:480});await cameraUtils.start();isCameraActive=true;camBtn.disabled=false;camBtn.innerText="カメラOFF";preview.classList.add('active');}catch(e){console.error(e);statusMsg.innerText="エラー発生";camBtn.disabled=false;}}
     
-    // UI Key Hint
     const keyHint = document.getElementById('key-hint');
-
     let nowT=0;
     function animate(){
         requestAnimationFrame(animate); const now=Date.now(); nowT+=0.01;
@@ -965,10 +926,8 @@ const LETTER_IMAGE_SRC = './picture.jpg';
         const snow=snowGroup.getObjectByName("snow");
         if(snow){const p=snow.geometry.attributes.position.array,sp=snow.geometry.attributes.speed.array,dr=snow.geometry.attributes.drift.array;for(let i=0;i<p.length;i+=3){const idx=i/3;p[i]+=dr[idx]+Math.sin(nowT+idx)*0.3;p[i+2]+=Math.cos(nowT+idx)*0.3;p[i+1]-=sp[idx];if(p[i+1]<-400){p[i+1]=400;p[i]=(Math.random()-0.5)*1200;p[i+2]=(Math.random()-0.5)*800;}if(p[i]<-600)p[i]=600;if(p[i]>600)p[i]=-600;if(p[i+2]<-400)p[i+2]=400;if(p[i+2]>400)p[i+2]=-400;}snow.geometry.attributes.position.needsUpdate=true;}
         if(bokehGroup.children.length>0)bokehGroup.rotation.y+=0.0002;
-        
         if(envelopeMaterial)envelopeMaterial.uniforms.time.value=nowT;
         if(groundMaterial) groundMaterial.uniforms.time.value=nowT;
-
         if(Math.random()<0.008)spawnShootingStar();if(shootingStar){shootingStar.position.add(shootingStar.userData.vel);if(shootingStar.position.y<-150){scene.remove(shootingStar);shootingStar=null;}}
         if(appState===STATE.COUNTDOWN&&countdownGroup.children.length>0)countdownGroup.rotation.y=Math.sin(now*0.002)*0.12;
 
@@ -998,46 +957,59 @@ const LETTER_IMAGE_SRC = './picture.jpg';
         }
 
         if(appState===STATE.LETTER&&letterGroup.children.length>0){
-            const l=letterGroup.children[0], d=l.geometry.userData.dest, p=l.geometry.attributes.position.array; l.userData.animationTime+=0.01;
-            const t = Math.min(1.0, l.userData.animationTime);
-            // 简单的 lerp
-            for(let i=0;i<p.length;i+=3){
-                p[i]+=(d[i]-p[i])*0.05;
-                p[i+1]+=(d[i+1]-p[i+1])*0.05;
-                p[i+2]+=(d[i+2]-p[i+2])*0.05;
-            }
-            l.geometry.attributes.position.needsUpdate=true;
+            const mesh = letterGroup.children[0];
+            // 简单的淡入动画
+            mesh.userData.animationTime += 0.02;
+            const alpha = Math.min(1.0, mesh.userData.animationTime);
+            
+            // 慢慢浮现
+            mesh.material.opacity = alpha;
+            
+            // 简单的浮动效果
+            mesh.position.y = 20 + Math.sin(nowT * 1.5) * 2;
         }
-        if(appState===STATE.ENVELOPE&&envelopeGroup.children.length>0){const env=envelopeGroup.children[0];env.position.y=10+Math.sin(nowT*2.0)*0.5;}
+        if(appState===STATE.ENVELOPE&&envelopeGroup.children.length>0){const env=envelopeGroup.children[0];env.position.y=20+Math.sin(nowT*2.0)*0.5;}
 
         updateFireworks(); composer.render();
     }
 
-    // === 📱 适配手机竖屏的缩放逻辑 ===
+    // === 📱 适配手机和iPad竖屏的缩放逻辑 ===
     function onWindowResize() {
         const width = window.innerWidth;
         const height = window.innerHeight;
+        const aspect = width / height;
         
-        camera.aspect = width / height;
+        camera.aspect = aspect;
         camera.updateProjectionMatrix();
         
         renderer.setSize(width, height);
         composer.setSize(width, height);
         bloomPass.setSize(width, height);
 
-        // 如果是竖屏 (aspect < 1)，把摄像机拉远，否则树显示不全
-        if (width < height) {
-            camera.position.z = 160; // 手机竖屏拉远
-            camera.position.y = 20;  // 稍微抬高一点视角
+        // 如果是竖屏 (aspect < 1)
+        if (aspect < 1) {
+            // 平板/iPad 这种比较宽的竖屏 (例如 0.75)
+            if (aspect > 0.6) {
+                camera.position.z = 130; 
+                camera.position.y = 25; 
+                // 🔥🔥 关键修正：视线看往 y=35 处
+                camera.lookAt(0, 35, 0); 
+            } else {
+                // 手机这种细长的竖屏
+                camera.position.z = 160; 
+                camera.position.y = 20;  
+                camera.lookAt(0, 35, 0); 
+            }
         } else {
-            camera.position.z = 95;  // 电脑/横屏默认
+            // 横屏 / 电脑
+            camera.position.z = 95;  
             camera.position.y = 18;
+            camera.lookAt(0, 35, 0);
         }
-        camera.lookAt(0, 25, 0); // 始终看向树的中心
     }
 
     window.addEventListener('resize', onWindowResize);
-    onWindowResize(); // 初始化执行一次
+    onWindowResize(); 
 
     scene.remove(treeGroup);
     animate();
