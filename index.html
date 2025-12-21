@@ -358,7 +358,9 @@
     let appState = STATE.INIT;
 
     const BGM_FILE = 'bgm.mp3';
-    const LETTER_IMAGE_SRC = 'picture.jpg'; 
+    const params = new URLSearchParams(window.location.search);
+const photoFromUrl = params.get('photo');
+const LETTER_IMAGE_SRC = photoFromUrl ? photoFromUrl : 'picture.jpg';
 
     let letterScale = 0.45; 
     let letterTexture = null;
